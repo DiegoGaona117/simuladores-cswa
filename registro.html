@@ -526,17 +526,20 @@ footer a:hover { color: var(--text-secondary); }
   </div>
 
   <!-- SUCCESS -->
-  <div class="success-wrap" id="success-wrap" role="status">
-    <div class="success-icon">✓</div>
-    <div class="success-title">¡Listo, ya tienes acceso!</div>
-    <p class="success-msg">
-      Revisa <span class="success-email" id="email-confirmado"></span> —
-      te llegó el acceso a los 3 simuladores.<br><br>
-      Practica con calma y a condición real de examen.<br>
-      Si no te llega tu acceso, escríbeme al
-      <a class="success-link" href="https://wa.me/5214621579719">WhatsApp</a>.
-    </p>
-  </div>
+<div class="success-wrap" id="success-wrap" role="status">
+  <div class="success-icon">✓</div>
+  <div class="success-title">¡Listo, ya tienes acceso!</div>
+  <p class="success-msg">
+    Te enviamos tus accesos a <span class="success-email" id="email-confirmado"></span> y abrimos los simuladores en una pestaña nueva.<br><br>
+    <strong>¿No se abrió la pestaña?</strong><br>
+    <a class="success-link" href="https://diegogaona117.github.io/simuladores-cswa" target="_blank" style="text-decoration: underline; display: inline-block; margin-top: 6px;">
+      Haz clic aquí para entrar a los simuladores →
+    </a>
+    <br><br>
+    Si tienes alguna duda, escríbeme al 
+    <a class="success-link" href="https://wa.me/5214621579719" target="_blank">WhatsApp</a>.
+  </p>
+</div>
 
   <!-- TRUST -->
   <div class="trust" aria-label="Cifras del curso">
@@ -592,7 +595,7 @@ footer a:hover { color: var(--text-secondary); }
 </footer>
 
 <script>
-  /* ── SETEA KEY DE ESTE LANDING (va primero) ── */
+  /* ── SETEA KEY DE ESTE LANDING ── */
   localStorage.setItem('fb_visita2', 'ok');
 
   /* ── ORDER CODE ── */
@@ -612,16 +615,16 @@ footer a:hover { color: var(--text-secondary); }
 
   const ORDER_CODE = getOrCreateOrderCode();
 
-  /* ── CONSTANTES ── */
-  const WEBHOOK    = 'https://hook.us1.make.com/l7b8gps8gjqwtcj95xslmj9p5nmhh5fv';
-  const WEBHOOK_GS = 'https://script.google.com/macros/s/AKfycbxEbbDW-MwWJQSorzOfWovtWb4YPGWaLp2XTMFgNPCuMI1qoTQZVgWh_W14qOJ8QoK3_g/exec';
+  /* ── CONSTANTES UNIFICADAS ── */
+  const URL_SIMULADORES = 'https://diegogaona117.github.io/simuladores-cswa';
+  const WEBHOOK_GS      = 'https://script.google.com/macros/s/AKfycbxEbbDW-MwWJQSorzOfWovtWb4YPGWaLp2XTMFgNPCuMI1qoTQZVgWh_W14qOJ8QoK3_g/exec';
 
   function getCookie(name) {
     const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
     return match ? match[2] : '';
   }
 
-  /* ── TRACKING GAS — solo si ya visitó planos ── */
+  /* ── TRACKING GAS (PageView) ── */
   async function trackPageView() {
     if (localStorage.getItem('fb_visita') !== 'ok') return;
 
@@ -654,14 +657,14 @@ footer a:hover { color: var(--text-secondary); }
 
   trackPageView();
 
-  /* ── META PIXEL — ViewContent si ya visitó planos ── */
+  /* ── META PIXEL — ViewContent ── */
   if (localStorage.getItem('fb_visita') === 'ok') {
     if (typeof fbq !== 'undefined') fbq('track', 'ViewContent');
   }
 
-  /* ── DOM ── */
+  /* ── ELEMENTOS DOM ── */
   const emailInput      = document.getElementById('email');
-  const btnEnviar       = document.getElementById('btn-enviar');
+  const btnEnviar        = document.getElementById('btn-enviar');
   const errEmail        = document.getElementById('err-email');
   const formWrap        = document.getElementById('form-wrap');
   const successWrap     = document.getElementById('success-wrap');
@@ -677,7 +680,7 @@ footer a:hover { color: var(--text-secondary); }
     errEmail.style.display = show ? 'block' : 'none';
   }
 
-  /* ── ENVÍO ── */
+  /* ── ENVÍO DE FORMULARIO ── */
   async function enviar() {
     const email = emailInput.value.trim();
 
@@ -694,24 +697,48 @@ footer a:hover { color: var(--text-secondary); }
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 12000);
 
+    // 1. Ubicación aproximada por IP (compatible con navegadores antiguos)
+    let ubicacion = 'Desconocida';
+    let ip = 'No detectada';
+
     try {
-      const res = await fetch(WEBHOOK, {
+      const geoRes = await fetch('https://ipapi.co/json/');
+      if (geoRes.ok) {
+        const geoData = await geoRes.json();
+        ubicacion = `${geoData.city || ''}, ${geoData.country_name || ''}`.trim().replace(/^,|,$/g, '');
+        ip = geoData.ip || 'No detectada';
+      }
+    } catch (eGeo) {
+      console.log('No se pudo obtener la geolocalización:', eGeo);
+    }
+
+    // 2. Enviar datos a Google Apps Script
+    try {
+      await fetch(WEBHOOK_GS, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({
-          email,
-          event2: 'inscripcion',
-          fuente: 'landing-acceso-gratuito',
+          tipo: 'lead',
+          email: email,
+          ubicacion: ubicacion,
+          ip: ip,
+          order_code: ORDER_CODE,
+          fbp: getCookie('_fbp'),
+          fbc: getCookie('_fbc'),
           fecha: new Date().toISOString()
         }),
         signal: controller.signal
       });
 
       clearTimeout(timeout);
-      if (!res.ok) throw new Error('HTTP ' + res.status);
 
+      // 3. Meta Pixel Event
       if (typeof fbq !== 'undefined') fbq('track', 'Lead');
 
+      // 4. Abrir la página de simuladores
+      window.open(URL_SIMULADORES, '_blank');
+
+      // 5. Mostrar pantalla de éxito
       emailConfirmado.textContent = email;
       formWrap.style.display    = 'none';
       successWrap.style.display = 'block';
