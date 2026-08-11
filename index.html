@@ -833,8 +833,7 @@ function getSessionEstado() {
 }
 
 function sesionValida() {
-    const estado = getSessionEstado();
-    return estado === 'activo' || estado === 'completo';
+    return true;  // Acceso libre para cualquier visitante — bloqueo desactivado
 }
 
 // ── PAYWALL ──────────────────────────────────────────────────
