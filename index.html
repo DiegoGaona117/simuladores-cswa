@@ -1306,6 +1306,40 @@ function toggleTheme() {
     }
 })();
 
+    // ── REGISTRAR VISITA A SIMULADORES ───────────────────────────
+(function registrarVisitaSimulador() {
+    // ⚠️ REEMPLAZA CON LA URL DE TU WEB APP DE APPS SCRIPT
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxEbbDW-MwWJQSorzOfWovtWb4YPGWaLp2XTMFgNPCuMI1qoTQZVgWh_W14qOJ8QoK3_g/exec';
+
+    // 1. Obtener el order code desde localStorage (dg_sesion)
+    let orderCode = null;
+    try {
+        const sesion = JSON.parse(localStorage.getItem('dg_sesion') || '{}');
+        orderCode = sesion.order_code || sesion.orderCode || sesion.order || null;
+    } catch {}
+
+    // Si no se encuentra en dg_sesion, intenta buscar si existe como valor independiente en localStorage
+    if (!orderCode) {
+        orderCode = localStorage.getItem('order_code') || localStorage.getItem('orderCode');
+    }
+
+    if (!orderCode) return; // Si no hay order code, cancela el envío
+
+    // Evita peticiones innecesarias al recargar la misma sesión
+    const keyEnviado = `sim_enviado_${orderCode}`;
+    if (sessionStorage.getItem(keyEnviado)) return;
+
+    // 2. Enviar el order code a Apps Script
+    fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ orderCode: orderCode })
+    }).then(() => {
+        sessionStorage.setItem(keyEnviado, '1');
+    }).catch(err => console.error('Error al registrar visita:', err));
+})();
+
 // ── INIT ─────────────────────────────────────────────────────
 loadState();
 const urlIdx = getLessonFromURL();
